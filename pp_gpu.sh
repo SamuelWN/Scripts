@@ -17,10 +17,18 @@ ppg(){                                                                          
 #################################################################################################################################################################################
 
 
-USAGE="\tUsage: ppg [-d|-D|-g] <video file[s]>\n"
 TRASH=false
 DELETE=false
 GROUP=false
+USAGE="\tUsage: ppg [-d|-D|-g] <video file[s]>
+-d
+    Move original file to the trash after transcoding.
+-D
+    Imediately delete the original file after transcoding
+-g
+    Group the original file in a directory named 'Converted'.
+    (The directory is created in the same directory of the original file.)
+"
 
 cleanup() {
     echo 'Something went wrong during the transcoding process...' >&2;
@@ -28,22 +36,19 @@ cleanup() {
     rm "$f_265" && exit 255;
 }
 
-for opt in $@; do
-    if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
-        # Prints usage if requested
-        echo -e "$USAGE"
-        exit 0;
-    elif [[ "$1" = "-d" ]]; then
-        TRASH=true;
-        shift
-    elif [[ "$1" = "-D" ]]; then
-        DELETE=true;
-        shift
-    elif [[ "$1" = "-g" ]] || [[ "$1" = "-G" ]]; then
-        GROUP=true;
-        shift
-    fi
+while getopts ":dDgh" opt
+do
+    case $opt in
+    d)  TRASH=true;;
+    D)  DELETE=true;;
+    g)  GROUP=true;;
+    h)  echo -e "$USAGE"; exit ;;
+    *)  echo "Un-imlemented option chosen"
+        echo "Try '$0 -h' for usage details."
+        exit;;
+    esac
 done
+shift $((OPTIND-1))
 
 if [[ -z "$1" ]]; then
     # Prints usage if no files provided
