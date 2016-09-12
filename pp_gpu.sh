@@ -20,7 +20,7 @@ ppg(){                                                                          
 TRASH=false
 DELETE=false
 GROUP=false
-USAGE="\tUsage: ppg [-d|-D|-g] <video file[s]>
+USAGE="Usage: ppg [-d|-D|-g] <video file[s]>
 -d
     Move original file to the trash after transcoding.
 -D
