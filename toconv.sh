@@ -18,14 +18,17 @@
 
 SELF="$(basename "$0")"
 BITRATE=false
+RATE=2000000
 CUTOFF=false
 CODEC=true
 SIZE=""
-USAGE="Usage:\t${SELF} [-s] [-c] [-b]  [directory]
+USAGE="Usage:\t${SELF} [-s <size>] [-c] [-b] [-r <bitrate>] [directory]
 -s M|G|T|E|P|Y|Z
     Minimum file size for results
 -b
     Only return results with bitrates greater than 2,000 kbps
+-r <rate>
+    Only return results with bitrates greater than the given bitrate (in kbps)
 -c
     Include HEVC encoded files in the results
 [directory]
@@ -46,11 +49,21 @@ is_vid() {
     return 1;
 }
 
-while getopts ":s:cbh" opt
+while getopts ":s:cbr:h" opt
 do
     case $opt in
-    s)  SIZE="$OPTARG"; CUTOFF=true;;
+    s)  SIZE="$OPTARG";
+        CUTOFF=true;;
     b)  BITRATE=true;;
+    r)  case "$OPTARG" in
+            ''|*[!0-9]*) echo "ERROR"
+                echo "    Option '-r' requires a numeric argument." ;
+                echo "    Use '-h' to see usage guidelines.";
+                exit;;
+            *) let RATE=OPTARG*1000;
+                BITRATE=true;;
+        esac;;
+
     c)  CODEC=false;;
     h)  echo -e "$USAGE"; exit ;;
     *)  echo "Un-imlemented option chosen"
@@ -59,7 +72,6 @@ do
     esac
 done
 shift $((OPTIND-1))
-
 
 if [[ "$CUTOFF" = true ]] && [[ -z $SIZE || ${#SIZE} -ne 1 || ! "MGTEPYZ" =~ .*$SIZE.* ]]; then
     echo -e "$USAGE"
@@ -93,9 +105,10 @@ while read f; do
         )
         if [[ "$CUTOFF" = false ]] || [[ $(echo ${MEM} | grep $SIZE) ]]; then
             B_RATE="$(mediainfo --Inform="Video;%BitRate%" "$f")"
-            if [[ "$BITRATE" = false ]] || [[ "$B_RATE" -gt 2000000 ]]; then
+            if [[ "$BITRATE" = false ]] || [[ "$B_RATE" -gt $RATE ]]; then
+            # if [[ "$BITRATE" = false ]] || [[ "$B_RATE" -gt 10000000 ]]; then
                 B_RATE="$(printf "%'.f\n" `expr $B_RATE / 1000`)"
-                BATCH="$BATCH \"$f\""
+                BATCH="$BATCH \"${f//'!'/'\!'}\""
                 echo "${MEM}B ($B_RATE kbps)"
                 echo "ppg -g \"$f\"";
                 echo
@@ -110,4 +123,3 @@ done <<< "$(find  $DIRS -type f -regex '.*\.\(mpeg\|ra?m\|avi\|mp\(g\|e\|4\)\|mo
 if [[ "$BATCH" ]]; then
     echo -e "Batch:\nnohup $HOME/scripts/pp_gpu.sh -g $BATCH > nohup.out &"
 fi
-
