@@ -2,7 +2,6 @@
 
 # Configure script environment
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#export PATH=/usr/sbin:/sbin:/usr/bin:/bin
 set -o nounset
 
 if [[ $# > 0 ]]; then dir="$1"
