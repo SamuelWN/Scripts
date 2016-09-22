@@ -1,4 +1,5 @@
 #!/bin/bash
+# Builds FFmpeg with nvenc and other useful options
 
 sudo apt-get update
 sudo apt-get -y install autoconf automake build-essential libass-dev libfreetype6-dev \
