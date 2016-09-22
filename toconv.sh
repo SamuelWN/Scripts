@@ -18,15 +18,17 @@
 
 SELF="$(basename "$0")"
 BITRATE=false
-RATE=2000000
+RATE=2100000
 CUTOFF=false
 CODEC=true
+TCODE_SCRPT="$HOME/scripts/pp_gpu.sh"
+TCODE_CMD="ppg"
 SIZE=""
 USAGE="Usage:\t${SELF} [-s <size>] [-c] [-b] [-r <bitrate>] [directory]
 -s M|G|T|E|P|Y|Z
     Minimum file size for results
 -b
-    Only return results with bitrates greater than 2,000 kbps
+    Only return results with bitrates greater than 2,100 kbps
 -r <rate>
     Only return results with bitrates greater than the given bitrate (in kbps)
 -c
@@ -78,10 +80,9 @@ if [[ "$CUTOFF" = true ]] && [[ -z $SIZE || ${#SIZE} -ne 1 || ! "MGTEPYZ" =~ .*$
     exit -1;
 fi
 
-
-DIRS="."
-if [[ $# > 0 ]]; then
-    DIRS="$@"
+if [[ $RATE -lt 2100000 ]]; then
+    TCODE_CMD="pp"
+    TCODE_SCRPT="$HOME/scripts/pp.sh";
 fi
 
 BATCH=""
@@ -110,7 +111,7 @@ while read f; do
                 B_RATE="$(printf "%'.f\n" `expr $B_RATE / 1000`)"
                 BATCH="$BATCH \"${f//'!'/'\!'}\""
                 echo "${MEM}B ($B_RATE kbps)"
-                echo "ppg -g \"$f\"";
+                echo "$TCODE_CMD -g \"$f\"";
                 echo
             fi
         fi
@@ -118,8 +119,8 @@ while read f; do
 
 # Note: Swap comment status on following two lines (and above) to search every file rather than limit to common video file extensions
 # done <<< "$(find -type f -not -path "*Converted*" -not -path "*Extracted*" -printf $'%s %p\n' | sort -k1,1nr -k2,2r | cut -d ' ' --complement -f 1)"
-done <<< "$(find  $DIRS -type f -regex '.*\.\(mpeg\|ra?m\|avi\|mp\(g\|e\|4\)\|mov\|divx\|asf\|qt\|wmv\|m\dv\|rv\|vob\|asx\|ogm\|ogv\|webm\|flv\|ts\)' -not -path "*Converted*" -not -path "*Extracted*" -printf $'%s %p\n' | sort -k1,1nr -k2,2r | cut -d ' ' --complement -f 1)"
+done <<< "$(find "$@" -type f -regex '.*\.\(mpeg\|mkv\|ra?m\|avi\|mp\(g\|e\|4\)\|mov\|divx\|asf\|qt\|wmv\|m\dv\|rv\|vob\|asx\|ogm\|ogv\|webm\|flv\|ts\)' -not -path "*Converted*" -not -path "*Extracted*" -printf $'%s %p\n' | sort -k1,1nr -k2,2r | cut -d ' ' --complement -f 1)"
 
 if [[ "$BATCH" ]]; then
-    echo -e "Batch:\nnohup $HOME/scripts/pp_gpu.sh -g $BATCH > nohup.out &"
+    echo -e "Batch:\nnohup $TCODE_SCRPT -g $BATCH > nohup.out &"
 fi
