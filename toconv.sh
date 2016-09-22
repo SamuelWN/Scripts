@@ -109,10 +109,12 @@ while read f; do
             if [[ "$BITRATE" = false ]] || [[ "$B_RATE" -gt $RATE ]]; then
             # if [[ "$BITRATE" = false ]] || [[ "$B_RATE" -gt 10000000 ]]; then
                 B_RATE="$(printf "%'.f\n" `expr $B_RATE / 1000`)"
-                BATCH="$BATCH \"${f//'!'/'\!'}\""
+                f="${f//"'"/"'\''"}"
+                BATCH="$BATCH '$f'"
                 echo "${MEM}B ($B_RATE kbps)"
-                echo "$TCODE_CMD -g \"$f\"";
+                echo "$TCODE_CMD -g '$f'";
                 echo
+
             fi
         fi
     fi
