@@ -48,7 +48,7 @@ for f in "$@"; do
     a_codec="aac"
     [[ $(ffprobe "$f" 2>&1 | egrep "Audio: aac") ]] && a_codec="copy";
     {
-        ffmpeg -threads 6 -i "$f" -c copy -c:v libx265 -c:a "$a_codec" "$f_265"
+        ffmpeg -threads 6 -i "$f" -preset slow -map 0 -c:v:0 libx265 -c:v:1 copy -c:a "$a_codec" "$f_265"
     } || {
         cleanup
     }
