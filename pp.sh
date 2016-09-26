@@ -1,5 +1,22 @@
 #!/bin/bash
-# Batch transcoding of files to to the hevc codec
+# @author   Samuel Walters-Nevet                                                                                                                                                #
+# @date     Summer, 2016                                                                                                                                                        #
+# @brief    Batch converter of files to the HEVC codec via FFmpeg, using the libx265 video codec                                                                                #
+# @file     pp.sh                                                                                                                                                               #
+#                                                                                                                                                                               #
+# Prerequisits:                                                                                                                                                                 #
+#   ffmpeg with nvenc (see 'build_ffmpeg.sh')                                                                                                                                   #
+#   mediainfo   (sudo apt install mediainfo)                                                                                                                                    #
+#   AtomicParsely (sudo apt install atomicparsley)                                                                                                                              #
+#                                                                                                                                                                               #
+# Note:                                                                                                                                                                         #
+#   The following function can be placed cut and pasted into your bashrc file ('~/.bashrc') to make calling this script easier:                                                 #
+                                                                                                                                                                                #
+pp(){                                                                                                                                                                           #
+    bash "$HOME/scripts/pp.sh" "$@"                                                                                                                                             #
+}                                                                                                                                                                               #
+#                                                                                                                                                                               #
+#################################################################################################################################################################################
 
 set -euo pipefail
 
@@ -61,7 +78,6 @@ for f in "$@"; do
     if [[ "$TRASH" = true ]]; then gvfs-trash "$f"
     elif [[ "$DELETE" = true ]]; then rm "$f"
     elif [[ "$GROUP" = true ]]; then
-        # verted="/media/samuelwn/RAID/ToDel/Converted";
         verted="$(dirname "$f")/Converted";
         [[ -d "$verted" ]] || mkdir "$verted";
         mv --backup=numbered "$f" "$verted"
