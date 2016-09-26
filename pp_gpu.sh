@@ -1,22 +1,22 @@
 #!/bin/bash
-# @author   Samuel Walters-Nevet                                                                                                                                                #
-# @date     Summer, 2016                                                                                                                                                        #
-# @brief    Batch converter of files to the HEVC codec via FFmpeg, using NVidia's 'hevc_nvenc' codec                                                                            #
-# @file     pp_gpu.sh                                                                                                                                                           #
-#                                                                                                                                                                               #
-# Prerequisits:                                                                                                                                                                 #
-#   ffmpeg with nvenc (see 'build_ffmpeg.sh')                                                                                                                                   #
-#   mediainfo   (sudo apt install mediainfo)                                                                                                                                    #
-#   AtomicParsely (sudo apt install atomicparsley)                                                                                                                              #
-#                                                                                                                                                                               #
-# Note:                                                                                                                                                                         #
-#   The following function can be placed cut and pasted into your bashrc file ('~/.bashrc') to make calling this script easier:                                                 #
-                                                                                                                                                                                #
-ppg(){                                                                                                                                                                          #
-    bash "$HOME/scripts/pp_gpu".sh "$@"                                                                                                                                         #
-}                                                                                                                                                                               #
-#                                                                                                                                                                               #
-#################################################################################################################################################################################
+# @author   Samuel Walters-Nevet                                                                                                    #
+# @date     Summer, 2016                                                                                                            #
+# @brief    Batch converter of files to the HEVC codec via FFmpeg, using NVidia's 'hevc_nvenc' codec                                #
+# @file     pp_gpu.sh                                                                                                               #
+#                                                                                                                                   #
+# Prerequisits:                                                                                                                     #
+#   ffmpeg with nvenc (see 'build_ffmpeg.sh')                                                                                       #
+#   mediainfo   (sudo apt install mediainfo)                                                                                        #
+#   AtomicParsely (sudo apt install atomicparsley)                                                                                  #
+#                                                                                                                                   #
+# Note:                                                                                                                             #
+#   The following function can be placed cut and pasted into your bashrc file ('~/.bashrc') to make calling this script easier:     #
+                                                                                                                                    #
+ppg(){                                                                                                                              #
+    bash "$HOME/scripts/pp_gpu".sh "$@"                                                                                             #
+}                                                                                                                                   #
+#                                                                                                                                   #
+#####################################################################################################################################
 
 
 TRASH=false
