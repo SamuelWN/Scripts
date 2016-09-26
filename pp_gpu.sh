@@ -6,6 +6,8 @@
 #                                                                                                                                                                               #
 # Prerequisits:                                                                                                                                                                 #
 #   ffmpeg with nvenc (see 'build_ffmpeg.sh')                                                                                                                                   #
+#   mediainfo   (sudo apt install mediainfo)                                                                                                                                    #
+#   AtomicParsely (sudo apt install atomicparsley)                                                                                                                              #
 #                                                                                                                                                                               #
 # Note:                                                                                                                                                                         #
 #   The following function can be placed cut and pasted into your bashrc file ('~/.bashrc') to make calling this script easier:                                                 #
