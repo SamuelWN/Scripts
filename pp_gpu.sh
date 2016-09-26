@@ -67,7 +67,13 @@ for f in "$@"; do
     a_codec="aac"
     [[ $(ffprobe "$f" 2>&1 | egrep "Audio: aac") ]] && a_codec="copy";
     {
-        ffmpeg -threads 6 -i "$f" -preset slow -map 0 -c:v:0 hevc_nvenc -c:v:1 copy -c:a "$a_codec" "$f_265"
+        ffmpeg -threads 6 -i "$f" -preset slow -c:v hevc_nvenc -c:a "$a_codec" "$f_265" && \
+        if [[ "$(mediainfo --Inform="General;%Cover%" "$f")" == "Yes" ]]; then
+            cover="${f%.*}_artwork_1.jpg"
+            AtomicParsley "$f" -E && \
+            AtomicParsley "$f_265" --artwork "$cover" --overWrite && \
+            rm "$cover"
+        fi
     } || {
         cleanup
     }
