@@ -5,7 +5,7 @@
 # @file     pp.sh                                                                                                                                                               #
 #                                                                                                                                                                               #
 # Prerequisits:                                                                                                                                                                 #
-#   ffmpeg with nvenc (see 'build_ffmpeg.sh')                                                                                                                                   #
+#   ffmpeg                                                                                                                                                                      #
 #   mediainfo   (sudo apt install mediainfo)                                                                                                                                    #
 #   AtomicParsely (sudo apt install atomicparsley)                                                                                                                              #
 #                                                                                                                                                                               #
