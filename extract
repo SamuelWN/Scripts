@@ -9,7 +9,7 @@
 #                                                                                                           #
 # Prerequisits:                                                                                             #
 #   apt install tar xz bzip2 unrar gzip unzip p7zip cabextract                                              #
-                                                                                                            #
+#                                                                                                           #
 extract() {
     bash ~/scripts/extract.sh "$@"
 }
