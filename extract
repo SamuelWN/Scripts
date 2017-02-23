@@ -1,59 +1,66 @@
 #!/bin/bash
 # @author   Samuel Walters-Nevet                                                                            #
-# @date     Summer, 2016                                                                                    #
+# @date     Summer, 2016; updated Spring 2017                                                               #
 # @brief    Extracts an archive based upon its file extension                                               #
 # @file     extract.sh                                                                                      #
 #                                                                                                           #
 # Note:                                                                                                     #
 #   Adding a function like the one below to your bashrc file ('~/.bashrc') can make this a lot more useful: #
-
+#                                                                                                           #
+# Prerequisits:                                                                                             #
+#   apt install tar xz bzip2 unrar gzip unzip p7zip cabextract                                              #
+                                                                                                            #
 extract() {
     bash ~/scripts/extract.sh "$@"
 }
 #############################################################################################################
 
-if [[ -z "$1" ]]; then
-        # display usage if no parameters given
-        echo "Usage: extract [-d] <archive>
--d  Extract files into a subdirectory"
+if [[ -z "$@" ]]; then
+    # display usage if no parameters given
+    echo "Usage:"
+    echo "extract [-d] <archive>"
+    echo "-d  Extract files into a subdirectory"
+    exit 1;
+fi
 
-    else
+for f in "$@"; do
         IN_DIR=false
 
-        if [[ "$1" = "-d" ]]; then
+        if [[ "$f" = "-d" ]]; then
             IN_DIR=true;
             shift
         fi
 
-        if [[ -f "$1" ]] ; then
-            IN="$1"
+        if [[ -f "$f" ]] ; then
+            IN="$f"
 
             if [[ "$IN_DIR" = true ]]; then
                 NAME="${1%.*}"
                 mkdir "$NAME" && cd "$NAME"
-                IN="../$(basename "$1")"
+                IN="../$(basename "$f")"
             fi
 
-            case "$1" in
-            *.tar.bz2) tar xvjf "$IN" ;;
-            *.tar.gz) tar xvzf "$IN" ;;
-            *.tar.xz) tar xvJf "$IN" ;;
-            *.lzma) unlzma "$IN" ;;
-            *.bz2) bunzip2 "$IN" ;;
-            *.rar) unrar x -ad "$IN" ;;
-            *.gz) gunzip "$IN" ;;
-            *.tar) tar xvf "$IN" ;;
-            *.tbz2) tar xvjf "$IN" ;;
-            *.tgz) tar xvzf "$IN" ;;
-            *.zip) unzip "$IN" ;;
-            *.Z) uncompress "$IN" ;;
-            *.7z) 7z x "$IN" ;;
-            *.xz) unxz "$IN" ;;
-            *.exe) cabextract "$IN" ;;
-            *) echo "extract: '$1' - unknown archive method" ;;
+            case "$f" in
+                *.tar.bz2) tar xvjf "$IN" ;;
+                *.tar.gz) tar xvzf "$IN" ;;
+                *.tar.xz) tar xvJf "$IN" ;;
+                *.lzma) unlzma "$IN" ;;
+                *.bz2) bunzip2 "$IN" ;;
+                *.rar) unrar x -ad "$IN" ;;
+                *.gz) gunzip "$IN" ;;
+                *.tar) tar xvf "$IN" ;;
+                *.tbz2) tar xvjf "$IN" ;;
+                *.tgz) tar xvzf "$IN" ;;
+                *.zip) unzip "$IN" ;;
+                *.Z) uncompress "$IN" ;;
+                *.7z) 7z x "$IN" ;;
+                *.xz) unxz "$IN" ;;
+                *.exe) cabextract "$IN" ;;
+                *) echo "extract: '$f' - unknown archive method" ;;
             esac
         else
-            echo "$1 - file does not exist"
+            echo "$f - file does not exist"
         fi
     fi
+done
 }
