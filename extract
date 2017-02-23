@@ -4,12 +4,11 @@
 # @brief    Extracts an archive based upon its file extension                                               #
 # @file     extract.sh                                                                                      #
 #                                                                                                           #
-# Note:                                                                                                     #
-#   Adding a function like the one below to your bashrc file ('~/.bashrc') can make this a lot more useful: #
-#                                                                                                           #
 # Prerequisits:                                                                                             #
 #   apt install tar xz bzip2 unrar gzip unzip p7zip cabextract                                              #
 #                                                                                                           #
+# Note:                                                                                                     #
+#   Adding a function like the one below to your bashrc file ('~/.bashrc') can make this a lot more useful: #
 extract() {
     bash ~/scripts/extract.sh "$@"
 }
