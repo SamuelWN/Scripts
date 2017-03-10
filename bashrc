@@ -18,3 +18,12 @@ apt() {
         sudo apt $@
     fi
 }
+
+# Find duplicate files and replace them with hardlinks (requires rdfind)
+lndupes() {
+    DIR="$PWD"
+
+    [[ $# > 0 ]] && DIR="$1";
+
+    rdfind -makehardlinks true -ignoreempty true -outputname "$PWD/DuplicateFiles.txt" "$DIR/"*
+}
