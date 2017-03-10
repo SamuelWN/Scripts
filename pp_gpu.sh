@@ -1,6 +1,6 @@
 #!/bin/bash
 # @author   Samuel Walters-Nevet                                                                                                                                                #
-# @date     Summer, 2016                                                                                                                                                        #
+# @date     2016-2017                                                                                                                                                           #
 # @brief    Batch converter of files to the HEVC codec via FFmpeg, using NVidia's 'hevc_nvenc' codec                                                                            #
 # @file     pp_gpu.sh                                                                                                                                                           #
 #                                                                                                                                                                               #
