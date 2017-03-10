@@ -14,34 +14,66 @@
 #                                                                                                                                                                               #
 # Prerequisits:                                                                                                                                                                 #
 #   mediainfo   (sudo apt install mediainfo)                                                                                                                                    #
+#                                                                                                                                                                               #
+# Potential Issues:                                                                                                                                                             #
+# -- Need to verify that regex `find` code for checking file-extensions actually works as intended                                                                              #
+#    (I'm fairly confident that the `mp(e|g|4)` portion does not)                                                                                                               #
+#                                                                                                                                                                               #
 #################################################################################################################################################################################
 
-SELF="$(basename "$0")"
 BITRATE=false
+FFBR=false
+ARGS=""
 RATE=2100000
 CUTOFF=false
 CODEC=true
-TCODE_SCRPT="$HOME/scripts/pp_gpu.sh"
-TCODE_CMD="ppg"
-SIZE=""
-USAGE="Usage:\t${SELF} [-s <size>] [-c] [-b] [-r <bitrate>] [directory]
--s M|G|T|E|P|Y|Z
-    Minimum file size for results
+SCRIPT=false
+TCODE_SCRPT="$HOME/scripts/pp_nvenc.sh"
+TCODE_CMD="pp_nvenc"
+SIZE="+0"
+BY_RATE=false
+VERBOSE=false
+
+USAGE="Usage:\t$(basename "$0") [-s <size>] [-c] [-b] [-r <bitrate>] [directory]
+-h
+    Display this message.
+-s n[cwbkMG]
+    File uses n units of space, rounding up.
+    Prefixes + and - signify greater than and less than. e.g. \"-s +1G\"
+    Check the documentaion for \`find\` for more information (argument '-size').
 -b
     Only return results with bitrates greater than 2,100 kbps
+-f
+    Use 'ffprobe' to obtain the bitrate, rather than 'mediainfo'
+    (rarely - but occasionally - mediainfo has been unreliable in this regard)
 -r <rate>
     Only return results with bitrates greater than the given bitrate (in kbps)
+-R
+    Sort results by bitrate (decending)
+    Default: filesize (decending)
 -c
     Include HEVC encoded files in the results
+-v
+    Verbose
+-L
+    Output batch conversion script to a file (named 'ToConv.sh')
 [directory]
     The directory (including subdirectorys) to search
         (defaults to the current working directory)
 "
 
+# @TODO:
+"
+-a
+    Any additional argument(s) wished to be passed to the 'find'.
+    Example:
+        toconv -a '-iname \"*filename*\"'
+"
 
 vcodec() {
     mediainfo --Inform="Video;%Format%" "$1"
 }
+
 acodec() {
     mediainfo --Inform="Audio;%Format%" "$1"
 }
@@ -51,12 +83,38 @@ is_vid() {
     return 1;
 }
 
-while getopts ":s:cbr:h" opt
+ff_bitrate () {
+    ffprobe -show_format "$f" 2> /dev/null | grep "bit_rate" | sed 's/.*bit_rate=\([0-9]\+\).*/\1/g';
+}
+
+autoincr() {
+    f="$1"
+    ext=""
+    [[ "$f" == *.* ]] && ext=".${f##*.}"
+
+    if [[ -e "$f" ]] ; then
+        i=1
+        f="${f%.*}";
+
+        while [[ -e "${f}_${i}${ext}" ]]; do
+            let i++
+        done
+
+        f="${f}_${i}${ext}"
+    fi
+    echo "$f"
+}
+
+
+while getopts ":s:cbfr:a:RLvh" opt
 do
     case $opt in
-    s)  SIZE="$OPTARG";
+    s)  SIZE=("$OPTARG");
         CUTOFF=true;;
     b)  BITRATE=true;;
+    f)  FFBR=true;;
+# @TODO
+#   a)  ARGS="$OPTARG";;
     r)  case "$OPTARG" in
             ''|*[!0-9]*) echo "ERROR"
                 echo "    Option '-r' requires a numeric argument." ;
@@ -65,8 +123,10 @@ do
             *) let RATE=OPTARG*1000;
                 BITRATE=true;;
         esac;;
-
+    R)  BY_RATE=true;;
+    L)  SCRIPT=true;;
     c)  CODEC=false;;
+    v)  VERBOSE=true;;
     h)  echo -e "$USAGE"; exit ;;
     *)  echo "Un-imlemented option chosen"
         echo "Try '$0 -h' for usage details."
@@ -75,11 +135,6 @@ do
 done
 shift $((OPTIND-1))
 
-if [[ "$CUTOFF" = true ]] && [[ -z $SIZE || ${#SIZE} -ne 1 || ! "MGTEPYZ" =~ .*$SIZE.* ]]; then
-    echo -e "$USAGE"
-    exit -1;
-fi
-
 if [[ $RATE -lt 2100000 ]]; then
     TCODE_CMD="pp"
     TCODE_SCRPT="$HOME/scripts/pp.sh";
@@ -87,43 +142,65 @@ fi
 
 BATCH=""
 
+GET_FILES="find \"\$@\" -type f -regex '.*\.\(mpeg\|mkv\|ra?m\|avi\|mp\(g\|e\|4\)\|mov\|divx\|asf\|qt\|wmv\|m\dv\|rv\|vob\|asx\|ogm\|ogv\|webm\|flv\|ts\)'"
+GET_FILES="$GET_FILES -size \$SIZE -not -path \"*Converted*\" -not -path \"*Extracted*\""
+
+if [[ "$BY_RATE" = true ]]; then
+    GET_FILES="$GET_FILES  -execdir bash -c \"printf \\\`"
+    if [[ "$FFBR" = true ]]; then
+        GET_FILES="$GET_FILES ffprobe -show_format \\\"{}\\\" 2> /dev/null | grep \"bit_rate\" | sed 's/.*bit_rate=\\([0-9]\+\\).*/\\1/g'"
+    else
+        GET_FILES="$GET_FILES mediainfo --Inform=\\\"Video;%BitRate%\\\" \\\"{}\\\""
+    fi
+
+    GET_FILES="$GET_FILES \\\`\" \\; -printf \$' %p\\n'"
+
+else
+    GET_FILES="$GET_FILES -printf $'%s %p\n'"
+fi
+
+[[ "$VERBOSE" = true ]] && { echo -e "GET_FILES:\n$GET_FILES\n"; }
+
+
 while read f; do
+    [[ "$VERBOSE" = true ]] && echo "f: $f"
+
     [[ $f ]] || continue
 
-    # Note: Swap comment status on following two lines (and below) to search every file rather than limit to common video file extensions
-    # if [[ -f "$f" ]] && is_vid "$f" && [[ "$(vcodec "$f")" != "HEVC" || "$CODEC" = false ]] && [[ ! -f "${f%.*}_x265.mp4" ]] && [[ ! -f "${f%.*}_nvenc.mp4" ]] && [[ ! "$(dirname "$f" | egrep "/Converted")" ]]; then
-    if [[ -f "$f" ]] && [[ "$(vcodec "$f")" != "HEVC" || "$CODEC" = false ]] && [[ ! -f "${f%.*}_x265.mp4" ]] && [[ ! -f "${f%.*}_nvenc.mp4" ]] && [[ ! "$(dirname "$f" | egrep "/Converted")" ]]; then
-        MEM=$(du -S "$f" | cut -f 1)
-        MEM=$(echo $MEM | awk '
-            function human(x) {
-                if (x<1000) {return x} else {x/=1024}
-                s="MGTEPYZ";
-                while (x>=1000 && length(s)>1)
-                    {x/=1024; s=substr(s,2)}
-                return int(x+0.5) substr(s,1,1)
-            }
-            {sub(/^[0-9]+/, human($1)); print}'
-        )
-        if [[ "$CUTOFF" = false ]] || [[ $(echo ${MEM} | grep $SIZE) ]]; then
-            B_RATE="$(mediainfo --Inform="Video;%BitRate%" "$f")"
-            if [[ "$BITRATE" = false ]] || [[ "$B_RATE" -gt $RATE ]]; then
-            # if [[ "$BITRATE" = false ]] || [[ "$B_RATE" -gt 10000000 ]]; then
-                B_RATE="$(printf "%'.f\n" `expr $B_RATE / 1000`)"
-                f="${f//"'"/"'\''"}"
-                f="${f//"!"/"'\!'"}"
-                BATCH="$BATCH '$f'"
-                echo "${MEM}B ($B_RATE kbps)"
-                echo "$TCODE_CMD -g '$f'";
-                echo
+    # Note: Swap comment status on following two lines (and below) to examine every file rather than limit to common video file extensions
+    # if [[ -f "$f" ]] && is_vid "$f" && [[ "$(vcodec "$f")" != "HEVC" || "$CODEC" = false ]] && [[ ! -f "${f%.*}_x265.mp4" ]] && [[ ! -f "${f%.*}_nvenc.mp4" ]] && [[ ! "$(dirname "$f" | egrep "/Converted")" ]];
+    if [[ -f "$f" ]] && [[ "$(vcodec "$f")" != "HEVC" || "$CODEC" = false ]] && [[ ! -f "${f%.*}_x265.mp4" ]] && [[ ! -f "${f%.*}_nvenc.mp4" ]] && [[ ! "$(dirname "$f" | egrep "/Converted")" ]];
+    then
+        MEM=$(du -h "$f" | cut -f 1)
+        [[ "$VERBOSE" = true ]] && { echo "MEM: $MEM"; }
 
-            fi
+        if [[ "$FFBR" = false ]]; then
+            B_RATE="$(mediainfo --Inform="Video;%BitRate%" "$f")";
+        else
+            B_RATE="$(ff_bitrate "$f")";
+        fi
+
+        [[ "$VERBOSE" = true ]] && { echo "B_RATE: $B_RATE"; }
+
+        if [[ "$BITRATE" = false ]] || [[ "$B_RATE" -gt $RATE ]]; then
+            B_RATE="$(printf "%'.f\n" `expr $B_RATE / 1000`)"
+            f="${f//"'"/"'\''"}"
+            f="${f//"!"/"'\!'"}"
+            BATCH="$BATCH '$f'"
+            echo "${MEM}B ($B_RATE kbps)";
+            echo "$TCODE_CMD -g '$f'";
+            echo ;
         fi
     fi
 
 # Note: Swap comment status on following two lines (and above) to search every file rather than limit to common video file extensions
 # done <<< "$(find -type f -not -path "*Converted*" -not -path "*Extracted*" -printf $'%s %p\n' | sort -k1,1nr -k2,2r | cut -d ' ' --complement -f 1)"
-done <<< "$(find "$@" -type f -regex '.*\.\(mpeg\|mkv\|ra?m\|avi\|mp\(g\|e\|4\)\|mov\|divx\|asf\|qt\|wmv\|m\dv\|rv\|vob\|asx\|ogm\|ogv\|webm\|flv\|ts\)' -not -path "*Converted*" -not -path "*Extracted*" -printf $'%s %p\n' | sort -k1,1nr -k2,2r | cut -d ' ' --complement -f 1)"
+done <<< "$(eval "$GET_FILES" | sort --parallel=6 -k1,1nr -k2,2r | cut -d ' ' --complement -f 1)"
+
 
 if [[ "$BATCH" ]]; then
-    echo -e "Batch:\nnohup $TCODE_SCRPT -g $BATCH > nohup.out &"
+    echo -e "Batch:\nnohup bash $TCODE_SCRPT -g$BATCH > nohup.out &"
+
+    [[ "$SCRIPT" = true ]] && echo "$TCODE_SCRPT -g$BATCH" > "$(autoincr ToConv.sh)"
 fi
+
