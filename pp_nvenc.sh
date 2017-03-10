@@ -1,8 +1,8 @@
 #!/bin/bash
 # @author   Samuel Walters-Nevet                                                                                                                                                #
-# @date     2016-2017                                                                                                                                                        #
-# @brief    Batch converter of files to H264 codec via FFmpeg, using NVidia's 'h264_nvenc' codec                                                                            #
-# @file     pp_nenv.sh                                                                                                                                                           #
+# @date     2016-2017                                                                                                                                                           #
+# @brief    Batch converter of files to H264 codec via FFmpeg, using NVidia's 'h264_nvenc' codec                                                                                #
+# @file     pp_nenv.sh                                                                                                                                                          #
 #                                                                                                                                                                               #
 # Prerequisits:                                                                                                                                                                 #
 #   ffmpeg with nvenc (see 'build_ffmpeg.sh')                                                                                                                                   #
@@ -12,7 +12,7 @@
 # Note:                                                                                                                                                                         #
 #   The following function can be placed cut and pasted into your bashrc file ('~/.bashrc') to make calling this script easier:                                                 #
 ppn(){                                                                                                                                                                          #
-    bash "$HOME/scripts/pp_nvenc".sh "$@"                                                                                                                                         #
+    bash "$HOME/scripts/pp_nvenc".sh "$@"                                                                                                                                       #
 }                                                                                                                                                                               #
 #                                                                                                                                                                               #
 #################################################################################################################################################################################
@@ -22,7 +22,7 @@ DELETE=false
 GROUP=false
 GROUP_HERE=false;
 
-USAGE="\tUsage: $(basename $0) [-d|-D|-g] <video file[s]>
+USAGE="\tUsage: $(basename $0) [-d|-D|-g|-G] <video file[s]>
 -d
     Move original file to the trash after transcoding.
 -D
