@@ -1,63 +1,74 @@
-#!/bin/bash
-# @author   Samuel Walters-Nevet                                                                            #
-# @date     Summer, 2016; updated Spring 2017                                                               #
-# @brief    Extracts an archive based upon its file extension                                               #
-# @file     extract.sh                                                                                      #
-#                                                                                                           #
-# Prerequisits:                                                                                             #
-#   apt install tar xz bzip2 unrar gzip unzip p7zip cabextract                                              #
-#                                                                                                           #
-# Note:                                                                                                     #
-#   Adding a function like the one below to your bashrc file ('~/.bashrc') can make this a lot more useful: #
-extract() {
-    bash ~/scripts/extract.sh "$@"
-}
-#############################################################################################################
+autoincr() {
+    f="$1"
+    ext=""
+    [[ "$f" == *.* ]] && ext=".${f##*.}"
 
-if [[ -z "$@" ]]; then
-    # display usage if no parameters given
-    echo "Usage:"
-    echo "extract [-d] <archive>"
-    echo "-d  Extract files into a subdirectory"
-    exit 1;
-fi
+    if [[ -e "$f" ]] ; then
+        i=1
+        f="${f%.*}";
+
+        while [[ -e "${f}_${i}${ext}" ]]; do
+            let i++
+        done
+
+        f="${f}_${i}${ext}"
+    fi
+    echo "$f"
+}
 
 for f in "$@"; do
-    IN_DIR=false
-
-    if [[ "$f" = "-d" ]]; then
-        IN_DIR=true;
-        shift
+    if [[ -z "$f" ]]; then
+        # display usage if no parameters given
+        echo "Usage: extract <archive>"
+        exit 1;
+    elif [[ -z "$f" ]]; then
+        # display usage if no parameters given
+        echo "$f - file does not exist"
+        exit 2;
     fi
 
-    if [[ -f "$f" ]] ; then
-        IN="$f"
+    FILE="$f"
 
-        if [[ "$IN_DIR" = true ]]; then
-            NAME="${1%.*}"
-            mkdir "$NAME" && cd "$NAME"
-            IN="../$(basename "$f")"
+    DIR="${FILE%.*}"
+
+    if [[ "$DIR" == *.part[[:digit:]]* ]]; then
+        PART="${DIR##*.part}"
+        PART="${PART%.*}"
+
+        if [ "$PART" -eq "$PART" ] 2>/dev/null; then
+            DIR="${DIR%.part*}"
         fi
+    fi
 
-        case "$f" in
-            *.tar.bz2) tar xvjf "$IN" ;;
-            *.tar.gz) tar xvzf "$IN" ;;
-            *.tar.xz) tar xvJf "$IN" ;;
-            *.lzma) unlzma "$IN" ;;
-            *.bz2) bunzip2 "$IN" ;;
-            *.rar) unrar x -ad "$IN" ;;
-            *.gz) gunzip "$IN" ;;
-            *.tar) tar xvf "$IN" ;;
-            *.tbz2) tar xvjf "$IN" ;;
-            *.tgz) tar xvzf "$IN" ;;
-            *.zip) unzip "$IN" ;;
-            *.Z) uncompress "$IN" ;;
-            *.7z) 7z x "$IN" ;;
-            *.xz) unxz "$IN" ;;
-            *.exe) cabextract "$IN" ;;
-            *) echo "extract: '$f' - unknown archive method" ;;
-        esac
+    while [[ -e "$DIR" ]]; do
+        DIR="$(autoincr "$DIR")"
+    done
 
-        echo "$f - file does not exist"
+    FILE="$(pwd -P)/$FILE"
+
+    mkdir "$DIR" && cd "$DIR"
+
+    case "$FILE" in
+        *.tar.bz2) tar xvjf "$FILE" ;;
+        *.tar.gz) tar xvzf "$FILE" ;;
+        *.tar.xz) tar xvJf "$FILE" ;;
+        *.lzma) unlzma "$FILE" ;;
+        *.bz2) bunzip2 "$FILE" ;;
+        *.rar) unrar x -ad "$FILE" ;;
+        *.gz) gunzip "$FILE" ;;
+        *.tar) tar xvf "$FILE" ;;
+        *.tbz2) tar xvjf "$FILE" ;;
+        *.tgz) tar xvzf "$FILE" ;;
+        *.zip) unzip "$FILE" ;;
+        *.Z) uncompress "$FILE" ;;
+        *.7z) 7z x "$FILE" ;;
+        *.xz) unxz "$FILE" ;;
+        *.exe) cabextract "$FILE" ;;
+        *) echo "extract: '$f' - unknown archive method" ;;
+    esac
+
+    if [[ "$(ls -l "$DIR" | wc -l)" == 2 ]]; then
+        mv "$DIR"/* "$DIR"/../
+        rmdir "$DIR"
     fi
 done
