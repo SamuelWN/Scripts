@@ -33,59 +33,79 @@ autoincr() {
     echo "$f"
 }
 
-for f in "$@"; do
-    if [[ -z "$f" ]]; then
-        # display usage if no parameters given
-        echo "Usage: extract <archive>"
-        exit 1;
-    elif [[ -z "$f" ]]; then
-        # display usage if no parameters given
-        echo "$f - file does not exist"
-        exit 2;
-    fi
-
-    FILE="$f"
-
-    DIR="${FILE%.*}"
-
-    if [[ "$DIR" == *.part[[:digit:]]* ]]; then
-        PART="${DIR##*.part}"
-        PART="${PART%.*}"
-
-        if [ "$PART" -eq "$PART" ] 2>/dev/null; then
-            DIR="${DIR%.part*}"
+function extract {
+    for f in "$@"; do
+        if [[ -z "$f" ]]; then
+            # display usage if no parameters given
+            echo "Usage: extract <archive>"
+            exit 1;
+        elif [[ -z "$f" ]]; then
+            # display usage if no parameters given
+            echo "$f - file does not exist"
+            exit 2;
         fi
-    fi
 
-    while [[ -e "$DIR" ]]; do
-        DIR="$(autoincr "$DIR")"
+        FILE="$(realpath "$f")"
+        DIR="${FILE%.*}"
+
+        if [[ "$DIR" == *.part[[:digit:]]* ]]; then
+            PART="${DIR##*.part}"
+            PART="${PART%.*}"
+
+            if [ "$PART" -eq "$PART" ] 2>/dev/null; then
+                DIR="${DIR%.part*}"
+            fi
+        fi
+
+        while [[ -e "$DIR" ]]; do
+            DIR="$(autoincr "$DIR")"
+        done
+
+        CUR_DIR="$PWD"
+
+        DIR_TEMP="${DIR}.temp"
+        mkdir "$DIR_TEMP" && cd "$DIR_TEMP"
+
+        case "$FILE" in
+            *.tar.bz2) tar xvjf "$FILE" ;;
+            *.tar.gz) tar xvzf "$FILE" ;;
+            *.tar.xz) tar xvJf "$FILE" ;;
+            *.lzma) unlzma "$FILE" ;;
+            *.bz2) bunzip2 "$FILE" ;;
+            *.rar) unrar x -ad "$FILE" ;;
+            *.gz) gunzip "$FILE" ;;
+            *.tar) tar xvf "$FILE" ;;
+            *.tbz2) tar xvjf "$FILE" ;;
+            *.tgz) tar xvzf "$FILE" ;;
+            *.zip) unzip "$FILE" ;;
+            *.Z) uncompress "$FILE" ;;
+            *.7z) 7z x "$FILE" ;;
+            *.xz) unxz "$FILE" ;;
+            *.exe) cabextract "$FILE" ;;
+            *) echo "extract: '$FILE' - unknown archive method" ;;
+        esac
+
+        cd "$CUR_DIR"
+
+# @TODO:
+#   Add method such that:
+#       If there is only 1 sub-directory:
+#           contents are moved tor DIR_TEMP, and *then* anylized
+        if [[ "$(ls -l "$DIR_TEMP" | wc -l)" == 2 ]]; then
+            SUB_DIR="${DIR_TEMP}/$(ls "$DIR_TEMP")";
+
+            if [[ -f "$SUB_DIR" ]]; then
+                mv "$SUB_DIR" "${DIR}.${SUB_DIR##*.}"
+            else
+                mv "$SUB_DIR" "$DIR"
+            fi
+
+            rmdir "$DIR_TEMP"
+        else
+            mv "$DIR_TEMP" "$DIR"
+        fi
     done
+}
 
-    FILE="$(pwd -P)/$FILE"
 
-    mkdir "$DIR" && cd "$DIR"
-
-    case "$FILE" in
-        *.tar.bz2) tar xvjf "$FILE" ;;
-        *.tar.gz) tar xvzf "$FILE" ;;
-        *.tar.xz) tar xvJf "$FILE" ;;
-        *.lzma) unlzma "$FILE" ;;
-        *.bz2) bunzip2 "$FILE" ;;
-        *.rar) unrar x -ad "$FILE" ;;
-        *.gz) gunzip "$FILE" ;;
-        *.tar) tar xvf "$FILE" ;;
-        *.tbz2) tar xvjf "$FILE" ;;
-        *.tgz) tar xvzf "$FILE" ;;
-        *.zip) unzip "$FILE" ;;
-        *.Z) uncompress "$FILE" ;;
-        *.7z) 7z x "$FILE" ;;
-        *.xz) unxz "$FILE" ;;
-        *.exe) cabextract "$FILE" ;;
-        *) echo "extract: '$f' - unknown archive method" ;;
-    esac
-
-    if [[ "$(ls -l "$DIR" | wc -l)" == 2 ]]; then
-        mv "$DIR"/* "$DIR"/../
-        rmdir "$DIR"
-    fi
-done
+extract "$@"
