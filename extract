@@ -8,7 +8,7 @@
 #   Adding a function like the one below to your bashrc file ('~/.bashrc') can make this a lot more useful: #
 #                                                                                                           #
 # Prerequisits:                                                                                             #
-#   sudo apt install tar unxz-utils bzip2 unrar gzip unzip p7zip cabextract                                 #
+#   sudo apt install tar xz-utils bzip2 unrar gzip unzip p7zip cabextract                                   #
 #                                                                                                           #
 extract() {
     bash ~/scripts/extract.sh "$@"
