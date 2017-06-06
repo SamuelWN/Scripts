@@ -35,6 +35,7 @@ PATH="$HOME/bin:$PATH" PKG_CONFIG_PATH="$HOME/ffmpeg_build/lib/pkgconfig" ./conf
   --enable-libx265 \
   --enable-nonfree \
   --enable-libspeex \
+  --enable-nvenc \
   --enable-x11grab
 
 PATH="$HOME/bin:$PATH" make
