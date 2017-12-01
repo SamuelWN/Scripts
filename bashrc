@@ -60,7 +60,6 @@ trim() {
 #   e.g. 
 #       if elementIn "$val" "${ARR[@]}"; then
 elementIn () {
-    shopt -s nocasematch
     local e
     for e in "${@:2}"; do [[ "$e" == "$1" ]] && return 0; done
     return 1
