@@ -88,12 +88,12 @@ autoincr() {
     echo "$f"
 }
 
-if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
+if [[ "$#" == 0 ]] || [[ "$1" == "--help" ]]; then
     echo -e "$USAGE"
     exit 0;
 fi
 
-while getopts ":dDgGctfa" opt
+while getopts ":dDgGctfah" opt
 do
     case $opt in
         d)  TRASH=true; MOVE=true;
@@ -114,6 +114,9 @@ do
             ;;
       f|a)  COPY_AUD=false;
             ;;
+        h)  echo -e "$USAGE";
+            exit 0;
+            ;;
         *)  echo "Un-imlemented option chosen"
             echo "Try '$0 -h' for usage details."
             exit;;
@@ -122,24 +125,14 @@ done
 
 shift $((OPTIND-1))
 
-
-INPUT=( "$@" )
-
-# Check to see if a pipe exists on stdin.
-if [ -p /dev/stdin ]; then
-    while IFS= read line; do
-        INPUT=( "${INPUT[@]}" "${line}" )
-    done
-fi
-
-if [[ "${#INPUT[@]}" == 0 ]]; then
+if [[ "$#" == 0 ]]; then
     # Prints usage if no files provided
     echo -e "$USAGE"
     exit -1;
 fi
 
 
-for f in "${INPUT[@]}"; do
+for f in "$@"; do
     [[ ! -f "$f" ]] && echo -e "$USAGE" && exit 1;
 
     f_264="${f%.*}";
@@ -160,8 +153,7 @@ for f in "${INPUT[@]}"; do
     fi
 
     {
-        command ffmpeg -threads $THREADS -i "$f" -preset slow -id3v2_version 3 \
-                -tune film -strict -2 -max_muxing_queue_size 4096 \
+        ffmpeg -threads $THREADS -i "$f" -preset slow -id3v2_version 3 -strict -2 \
                 -c:v "$v_codec" -c:a "$a_codec" "$f_264"
 
         # Check FFmpeg exit code:
