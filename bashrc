@@ -65,3 +65,5 @@ elementIn () {
     return 1
 }
 
+alias today='date +%F'
+
