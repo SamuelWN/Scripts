@@ -1,5 +1,16 @@
 #!/bin/bash
-
+# @author   Samuel Walters-Nevet                                    #
+# @date     2017                                                    #
+# @brief    Batch converter of files to H264 codec via FFmpeg       #
+# @file     pp_x264.sh                                              #
+#                                                                   #
+# Prerequisits:                                                     #
+#   ffmpeg with nvenc (see 'build_ffmpeg.sh')                       #
+#   mediainfo   (sudo apt install mediainfo)                        #
+#   AtomicParsely (sudo apt install atomicparsley)                  #
+#                                                                   #
+#####################################################################
+                                                                
 set -euo pipefail
 
 TRASH=false
