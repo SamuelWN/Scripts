@@ -37,8 +37,8 @@ USAGE="\tUsage: $(basename $0) [-d|-D|-g|-G] <video file[s]>
 
 cleanup() {
     echo 'Something went wrong during the transcoding process...' >&2;
-    echo "'$f_265' will be moved to the trash." >&2;
-    rm "$f_265" && exit $1;
+    echo "'$f_264' will be moved to the trash." >&2;
+    rm "$f_264" && exit $1;
 }
 
 while getopts ":dDgGh" opt
@@ -67,14 +67,14 @@ fi
 for f in "$@"; do
     [[ ! -f "$f" ]] && echo -e "$USAGE" && exit 1;
 
-    f_265="${f%.*}";
-    [[ "${f##*.}" == "mp4" ]] && f_265="${f_265}_nvenc"
-    f_265="${f_265}.mp4";
+    f_264="${f%.*}";
+    [[ "${f##*.}" == "mp4" ]] && f_264="${f_264}_nvenc"
+    f_264="${f_264}.mp4";
 
     a_codec="aac"
     [[ $(ffprobe "$f" 2>&1 | egrep "Audio: aac") ]] && a_codec="copy";
     {
-        ffmpeg -threads 6 -i "$f" -preset slow -c:v h264_nvenc -c:a "$a_codec" "$f_265"
+        ffmpeg -threads 6 -i "$f" -preset slow -c:v h264_nvenc -c:a "$a_codec" "$f_264"
 
         # Check FFmpeg exit code:
         FFexit=$?
@@ -83,7 +83,7 @@ for f in "$@"; do
         if [[ "$(mediainfo --Inform="General;%Cover%" "$f")" == "Yes" ]]; then
             cover="${f%.*}_artwork_1.jpg"
             AtomicParsley "$f" -E && \
-            AtomicParsley "$f_265" --artwork "$cover" --overWrite && \
+            AtomicParsley "$f_264" --artwork "$cover" --overWrite && \
             rm ./"$cover"
         fi
     } || {
@@ -92,22 +92,22 @@ for f in "$@"; do
 
     if [[ "$TRASH" = true ]]; then
         gvfs-trash "$f";
-        [[ "${f_265%.*}" != "${f%.*}" ]] && mv "$f_265" "${f%.*}.mp4";
+        [[ "${f_264%.*}" != "${f%.*}" ]] && mv "$f_264" "${f%.*}.mp4";
     elif [[ "$DELETE" = true ]]; then
         rm "$f"
-        [[ "${f_265%.*}" != "${f%.*}" ]] && mv "$f_265" "${f%.*}.mp4";
+        [[ "${f_264%.*}" != "${f%.*}" ]] && mv "$f_264" "${f%.*}.mp4";
     elif [[ "$GROUP" = true ]]; then
         verted="$(dirname "$f")/Converted";
         [[ -d "$verted" ]] || mkdir "$verted";
         mv --backup=numbered "$f" "$verted";
 
-        [[ "${f_265%.*}" != "${f%.*}" ]] && mv "$f_265" "${f%.*}.mp4";
+        [[ "${f_264%.*}" != "${f%.*}" ]] && mv "$f_264" "${f%.*}.mp4";
     elif [[ "$GROUP_HERE" = true ]]; then
         verted="$PWD/Converted";
         [[ -d "$verted" ]] || mkdir "$verted";
         mv --backup=numbered "$f" "$verted";
 
-        [[ "${f_265%.*}" != "${f%.*}" ]] && mv "$f_265" "${f%.*}.mp4";
+        [[ "${f_264%.*}" != "${f%.*}" ]] && mv "$f_264" "${f%.*}.mp4";
     fi && \
     echo -e "\nDone!"
 done;
