@@ -1,16 +1,5 @@
 #!/bin/bash
-# @author   Samuel Walters-Nevet                                    #
-# @date     2017                                                    #
-# @brief    Batch converter of files to H264 codec via FFmpeg       #
-# @file     pp_x264.sh                                              #
-#                                                                   #
-# Prerequisits:                                                     #
-#   ffmpeg                                                          #
-#   mediainfo   (sudo apt install mediainfo)                        #
-#   AtomicParsely (sudo apt install atomicparsley)                  #
-#                                                                   #
-#####################################################################
-                                                                
+
 set -euo pipefail
 
 TRASH=false
@@ -22,19 +11,24 @@ TOUCH=false
 COPY_VID=false
 COPY_AUD=true
 
+bold=$(tput bold)
+normal=$(tput sgr0)
+
+AnalProbe='2e+16'
+
 THREADS=$((`nproc` * 3 / 4))
 
 USAGE="Usage:
-\t${0##*/} [-d|-D|-g|-G] [-t][-c][-a|-f] <video file[s]>
+\t${0##*/} [-d|-D|-g|-G] [-t][-c][-a|-f] [-T <arg>] <video file[s]>
 
--d
+${bold}-d${normal}
     Move original file to the trash after transcoding.
--D
+${bold}-D${normal}
     Imediately delete the original file after transcoding
--g
+${bold}-g${normal}
     Group the original file in a directory named 'Converted'.
     (The directory is created in the same directory of the original file.)
--G
+${bold}-G${normal}
     Group the original file in a directory named 'Converted'.
     (The directory is created in the current working directory.)
 
@@ -43,15 +37,39 @@ NOTE:
     only the last one will apply.
 
 
--t
+${bold}-t${normal}
     Touch the original file after transcoding.
--c
+${bold}-c${normal}
     Permit video stream copying, rather than transcoding.
     (This only applies to inputs with h264 or h265 encoding.)
--f
+${bold}-f${normal}
     Force transcoding audio track regardless of input codec
--a
+${bold}-a${normal}
     Force transcoding audio track regardless of input codec (same as '-f')
+
+${bold}-T${normal} <arg>
+    Transpose the frame; passed directly to FFmpeg. Options are:
+    -- 0, 4, cclock_flip
+        - Rotate by 90 degrees counterclockwise & vertically flip
+    -- 1, 5, clock
+        - Rotate by 90 degrees clockwise
+    -- 2, 6, cclock
+        - Rotate by 90 degrees counterclockwise,
+    -- 3, 7, clock_flip
+        - Rotate by 90 degrees clockwise & vertically flip
+    NOTE:
+
+
+${bold}--preset${normal} <arg>
+    Transcoding preset; passed directly to FFmpeg.
+    Options are:
+        ultrafast, superfast, veryfast, faster, fast,
+        medium, slow (default), slower, veryslow
+
+${bold}--tune${normal} <arg>
+    Optimize settings for input type; passed directly to FFmpeg.
+    Options are:
+        film, animation, grain, stillimage, fastdecode, zerolatency
 "
 
 vcodec() {
@@ -79,6 +97,18 @@ globGet() {
 }
 
 
+# Checks if element "$1" is in array "$2"
+# @NOTE:
+#   Be sure that array is passed in the form:
+#       "${ARR[@]}"
+elementIn () {
+    shopt -s nocasematch
+    local e
+    for e in "${@:2}"; do [[ "$e" == "$1" ]] && return 0; done
+    return 1
+}
+
+
 autoincr() {
     f="$1"
     ext="${f##*.}"
@@ -99,14 +129,22 @@ autoincr() {
     echo "$f"
 }
 
-if [[ "$#" == 0 ]] || [[ "$1" == "--help" ]]; then
+if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
     echo -e "$USAGE"
     exit 0;
 fi
 
-while getopts ":dDgGctfah" opt
+
+PRESET=''
+TUNE=''
+TPOSE=''
+TPOSE_LIST=({0..7} {,c}clock{,_flip})
+
+optspec=":dDgGctT:fa-:"
+
+while getopts "$optspec" opt
 do
-    case $opt in
+    case "${opt}" in
         d)  TRASH=true; MOVE=true;
             DELETE=false; GROUP=false; GROUP_HERE=false;
             ;;
@@ -114,7 +152,7 @@ do
             TRASH=false; GROUP=false; GROUP_HERE=false;
             ;;
         g)  GROUP=true; MOVE=true;
-            TRASH=false; DELETE=false;GROUP_HERE=false;
+            TRASH=false; DELETE=false; GROUP_HERE=false;
             ;;
         G)  GROUP_HERE=true; MOVE=true;
             TRASH=false; DELETE=false; GROUP=false;
@@ -125,25 +163,69 @@ do
             ;;
       f|a)  COPY_AUD=false;
             ;;
-        h)  echo -e "$USAGE";
-            exit 0;
+
+        T)  TPOSE="${OPTARG}"
             ;;
-        *)  echo "Un-imlemented option chosen"
-            echo "Try '$0 -h' for usage details."
-            exit;;
+        -)
+            case "${OPTARG}" in
+                preset)
+                    PRESET="${!OPTIND}"; OPTIND=$(( $OPTIND + 1 ))
+                    ;;
+                tune)
+                    TUNE="${!OPTIND}"; OPTIND=$(( $OPTIND + 1 ))
+                    ;;
+                *)
+                    if [ "$OPTERR" = 1 ] && [ "${optspec:0:1}" != ":" ]; then
+                        echo "Unknown option --${OPTARG}" >&2
+                    fi
+                    ;;
+            esac;;
+        *)  if [ "$OPTERR" != 1 ] || [ "${optspec:0:1}" = ":" ]; then
+                echo "Un-imlemented option chosen"
+                echo "Try '$0 -h' for usage details."
+                exit
+            fi;;
+
     esac
 done
 
 shift $((OPTIND-1))
 
-if [[ "$#" == 0 ]]; then
+if [[ "${PRESET}${TUNE}${TPOSE}" ]] && [[ "$COPY_VID" = true ]]; then
+    echo -e "\n${bold}WARNING:${normal}" >&2;
+    echo -e "\tVideo-stream copying overridden.\n" >&2;
+    COPY_VID=false
+fi
+
+[[ -z "$PRESET" ]] && PRESET='slow'
+
+PreTune="-preset $PRESET"
+[[ "$TUNE" ]] && PreTune="${PreTune} -tune $TUNE"
+
+TPOSE_CMD=''
+
+if [[ "$TPOSE" ]]; then
+    if ! elementIn "$TPOSE" "${TPOSE_LIST[@]}"; then
+        echo -e 'ERROR!!\nTranspose argument is not valid'
+        echo -e "$USAGE"
+        exit -1
+    fi
+
+    TPOSE_CMD=(-vf "transpose=${TPOSE}")
+fi
+
+
+INPUT=( "$@" )
+
+
+if [[ "${#INPUT[@]}" == 0 ]]; then
     # Prints usage if no files provided
     echo -e "$USAGE"
     exit -1;
 fi
 
 
-for f in "$@"; do
+for f in "${INPUT[@]}"; do
     [[ ! -f "$f" ]] && echo -e "$USAGE" && exit 1;
 
     f_264="${f%.*}";
@@ -164,8 +246,12 @@ for f in "$@"; do
     fi
 
     {
-        ffmpeg -threads $THREADS -i "$f" -preset slow -id3v2_version 3 -strict -2 \
-                -c:v "$v_codec" -c:a "$a_codec" "$f_264"
+        command ffmpeg -threads $THREADS                                \
+                    -analyzeduration $AnalProbe -probesize $AnalProbe   \
+                    -i "$f" -id3v2_version 3 -strict -2                 \
+                    -max_muxing_queue_size 10240 ${PreTune}             \
+                    -c:v "$v_codec" -c:a "$a_codec" ${TPOSE_CMD[@]}     \
+                    "$f_264"
 
         # Check FFmpeg exit code:
         [[  $? -ne 0  ]] && cleanup
