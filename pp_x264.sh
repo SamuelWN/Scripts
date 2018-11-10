@@ -58,18 +58,22 @@ ${bold}-T${normal} <arg>
     -- 3, 7, clock_flip
         - Rotate by 90 degrees clockwise & vertically flip
     NOTE:
-
+        Overrides video-stream copying.
 
 ${bold}--preset${normal} <arg>
     Transcoding preset; passed directly to FFmpeg.
     Options are:
         ultrafast, superfast, veryfast, faster, fast,
         medium, slow (default), slower, veryslow
+    NOTE:
+        Overrides video-stream copying.
 
 ${bold}--tune${normal} <arg>
     Optimize settings for input type; passed directly to FFmpeg.
     Options are:
         film, animation, grain, stillimage, fastdecode, zerolatency
+    NOTE:
+        Overrides video-stream copying.
 "
 
 vcodec() {
