@@ -8,11 +8,8 @@
 #   sudo apt install tar xz-utils bzip2 unrar gzip unzip p7zip cabextract                                   #
 #                                                                                                           #
 # Note:                                                                                                     #
-#   Adding a function like the one below to your bashrc file ('~/.bashrc') can make this a lot more useful: #
-#                                                                                                           #
-extract() {
-    bash ~/scripts/extract.sh "$@"
-}
+#   Aliasing this script in your bashrc file ('~/.bashrc') can make this a lot more useful:                 #
+alias extract='bash ~/scripts/extract.sh'
 #############################################################################################################
 
 autoincr() {
