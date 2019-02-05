@@ -67,3 +67,4 @@ elementIn () {
 
 alias today='date +%F'
 
+alias lipsum='perl ~/scripts/lipsum.pl'
