@@ -42,7 +42,7 @@ for aBashPid in "${BASH_PIDS[@]}"; do
 done
 
 # Reload history from disk
-# (ensures that the hisorty data that was just appended isn't overwritten)
+# (ensures that the hisorty data just appended by HUP-ed sessions isn't overwritten)
 history -r
 
 # Finally: Hibernate
