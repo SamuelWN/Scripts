@@ -1,9 +1,10 @@
-# Converts m4b audio file to an opus mka + cue file
+#!/usr/bin/env python3
 
+# Converts m4b audio file to an opus mka + cue file
+#
 # Adapted from script by TheMetalCenter:
 #   https://github.com/TheMetalCenter/m4b-mp3-chapters-from-cuesheets/blob/main/export-cue.py
-
-
+#
 # Usage: 
 #  m4b2mka.py <input>.m4b
 
@@ -29,13 +30,13 @@ def m4b2opus(m4b_file):
         .input(m4b_file)
         .output(mka_file,
                 acodec='libopus', audio_bitrate='32k',
-                map_metadata=0
-                # , loglevel='warning'
+                map_metadata=0, loglevel='warning'
             )
         .overwrite_output()
         .run()
     )
     return mka_file
+
 
 def get_chapters(m4b_file):
     return ffprobe(m4b_file, show_chapters=None)['chapters']
