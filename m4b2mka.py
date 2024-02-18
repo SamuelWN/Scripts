@@ -6,7 +6,6 @@
 
 # Usage: 
 #  m4b2mka.py <input>.m4b
-# py export-cue.py metadata_chapters.txt --audio-file="export.m4b" --output-file="cuesheet.cue"
 
 import argparse
 import datetime
