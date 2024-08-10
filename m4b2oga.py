@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 
-# Converts m4b audio file to an opus mka + cue file
+# Converts m4b audio file to an opus oga + cue file
 #
 # Adapted from script by TheMetalCenter:
 #   https://github.com/TheMetalCenter/m4b-mp3-chapters-from-cuesheets/blob/main/export-cue.py
 #
-# Usage: 
-#  m4b2mka.py <input>.m4b
+# Usage:
+#  m4b2oga.py <input>.m4b
+#
+# Requires:
+#  ffmpeg-python
+
 
 import argparse
 import datetime
@@ -24,25 +28,54 @@ except ImportError:
 
 
 def m4b2opus(m4b_file):
-    mka_file = os.path.splitext(m4b_file)[0] + '.mka'
+    """
+    Generate a Ogg Audio (.oga) file from the provided M4B audio file.
+
+    Parameters:
+    m4b_file (str): The path to the input M4B audio file.
+
+    Returns:
+    str: The path to the generated OGA audio file.
+    """
+    oga_file = os.path.splitext(m4b_file)[0] + '.oga'
     (
         ffmpeg
         .input(m4b_file)
-        .output(mka_file,
-                acodec='libopus', audio_bitrate='32k',
-                map_metadata=0, loglevel='warning'
+        .output(oga_file,
+                acodec='libopus', audio_bitrate='48k',
+                map_metadata=0
             )
         .overwrite_output()
         .run()
     )
-    return mka_file
+    return oga_file
 
 
 def get_chapters(m4b_file):
+    """
+    Retrieve the chapters from the specified m4b file.
+
+    Parameters:
+    m4b_file (str): The path to the m4b file.
+
+    Returns:
+    list: A list of chapters extracted from the m4b file.
+    """
     return ffprobe(m4b_file, show_chapters=None)['chapters']
 
 
 def book_info(file):
+    """
+    Extracts the performer and title information from an audio file using ffprobe.
+
+    Parameters:
+        file (str): The path to the audio file.
+
+    Returns:
+        tuple: A tuple containing the performer (str) and title (str) extracted from the audio file.
+               If the performer cannot be extracted, an empty string is returned.
+               If the title cannot be extracted, the basename of the audio file is used.
+    """
     tags = ffprobe(file)['format']['tags']
     keys = list(tags.keys())
     keys_upper = list(map(str.upper, keys))
@@ -65,7 +98,7 @@ def book_info(file):
         try:
             title=tags[keys[keys_upper.index('TITLE')]]
         except ValueError:
-            title=os.path.splitext(file)[0]
+            title=os.path.splitext(os.path.basename(file))[0]
     return performer, title
 
 def create_cue_sheet(names, track_times, timebases, start_time=datetime.timedelta(seconds=0)):
@@ -82,6 +115,7 @@ def create_cue_sheet(names, track_times, timebases, start_time=datetime.timedelt
     """
     accumulated_time = start_time
 
+
     for track_index, (name, track_time, timebase) in enumerate(
             zip(names, track_times, timebases)):
         minutes = int(accumulated_time.total_seconds() / (timebase*60))
@@ -97,18 +131,11 @@ def create_cue_sheet(names, track_times, timebases, start_time=datetime.timedelt
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Creates a cue sheet given a track list.')
-    parser.add_argument('audio_file', nargs='?', type=argparse.FileType('r'),
+    parser.add_argument('audio_file', nargs='+', type=argparse.FileType('r'),
                         default=sys.stdin,
                         help='The audio file corresponding to cue sheet this '
                         'script will generate. This file will be used to infer '
                         'its name for the cue sheet FILE attribute.')
-    parser.add_argument('--start-seconds', dest='start_seconds', type=int,
-                        default=0, help='Start time of the first track in '
-                        'seconds.')
-    parser.add_argument('--output-file', dest='output_file', default=sys.stdout,
-                        type=argparse.FileType('w'),
-                        help='The location to print the output cue file. '
-                        'By default, stdout.')
     parser.add_argument('--debug', dest='log_level', default=logging.WARNING,
                         action='store_const', const=logging.DEBUG,
                         help='Print debug log statements.')
@@ -116,41 +143,46 @@ if __name__ == '__main__':
     logging.basicConfig(stream=sys.stderr, level=args.log_level)
     logger = logging.getLogger(__name__)
 
-    start = datetime.timedelta(seconds=args.start_seconds)
+    for file in args.audio_file:
+        performer, title = book_info(file.name)
+        oga_file = os.path.splitext(file.name)[0] + '.oga'
 
-    performer, title = book_info(args.audio_file.name)
-    mka_file = m4b2opus(args.audio_file.name)
+        if not os.path.isfile(oga_file):
+            oga_file = m4b2opus(file.name)
 
-    track_times = []
-    names = []
-    performers = []
-    timebases = []
+        track_times = []
+        names = []
+        performers = []
+        timebases = []
 
 
-    for aChap in get_chapters(args.audio_file.name):
-        try:
-            names.append(aChap['tags']['title'])
-            performers.append(performer)
-            track_times.append(
-                            datetime.timedelta(
-                                seconds=(int(aChap['end']) - int(aChap['start']))
+        for aChap in get_chapters(file.name):
+            try:
+                names.append(aChap['tags']['title'])
+                performers.append(performer)
+                track_times.append(
+                                datetime.timedelta(
+                                    seconds=(int(aChap['end']) - int(aChap['start']))
+                                )
                             )
-                        )
-            timebases.append(int(aChap['time_base'].split('/')[1]))
-        except ValueError as v:
-           logger.error(v)
+                timebase = int(aChap['time_base'].split('/')[1])
+                if timebase > 10000:
+                    timebase=1000
+                timebases.append(timebase)
+            except ValueError as v:
+               logger.error(v)
 
 
-    output_file = open(os.path.splitext(mka_file)[0] + '.cue', "w")
-    output_file.writelines('PERFORMER "{}"\n'.format(performer))
-    output_file.writelines('TITLE "{}"\n'.format(title))
+        output_file = open(os.path.splitext(oga_file)[0] + '.cue', "w")
+        output_file.writelines('PERFORMER "{}"\n'.format(performer))
+        output_file.writelines('TITLE "{}"\n'.format(title))
 
-    audio_file_extension = os.path.splitext(mka_file)[1][1:].upper()
-    output_file.writelines('FILE "{}" {}\n'.format(mka_file, audio_file_extension))
+        audio_file_extension = os.path.splitext(oga_file)[1][1:].upper()
+        output_file.writelines('FILE "{}" {}\n'.format(os.path.basename(oga_file), audio_file_extension))
 
-    output_file.writelines(
-            '{}\n'.format(cue_entry
-        ) for cue_entry in create_cue_sheet(
-                    names, track_times, timebases, start
-                )
-    )
+        output_file.writelines(
+                '{}\n'.format(cue_entry
+            ) for cue_entry in create_cue_sheet(
+                        names, track_times, timebases
+                    )
+        )
